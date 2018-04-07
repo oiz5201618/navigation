@@ -43,6 +43,10 @@
 #include <base_local_planner/trajectory_cost_function.h>
 #include <base_local_planner/trajectory_sample_generator.h>
 #include <base_local_planner/trajectory_search.h>
+#include <base_local_planner/simple_trajectory_generator.h>
+#include <pthread.h>
+
+#define THREAD_NUM 4
 
 namespace base_local_planner {
 
@@ -61,6 +65,9 @@ public:
   ~SimpleScoredSamplingPlanner() {}
 
   SimpleScoredSamplingPlanner() {}
+
+  static void* parallelTrajectory(void* _range);
+  //std::vector<TrajectoryCostFunction*> getCritics_();
 
   /**
    * Takes a list of generators and critics. Critics return costs > 0, or negative costs for invalid trajectories.
@@ -101,7 +108,26 @@ private:
   int max_samples_;
 };
 
+/**
+ * @class ThreadRange
+ */
+class ThreadsArg{
 
+public:
+
+  ~ThreadsArg() {}
+
+  ThreadsArg() {}
+
+  int start;
+  int end;
+  int best_cost;
+  Trajectory best_traj;
+  TrajectorySampleGenerator* gen_;
+  //std::vector<Trajectory>* all_explored;
+  SimpleScoredSamplingPlanner *this_planner;
+
+};
 
 
 } // namespace

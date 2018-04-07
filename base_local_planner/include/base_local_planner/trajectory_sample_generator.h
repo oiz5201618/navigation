@@ -57,12 +57,22 @@ public:
   /**
    * Whether this generator can create more trajectories
    */
-  virtual bool nextTrajectory(Trajectory &traj) = 0;
+  virtual bool nextTrajectory(Trajectory &traj, int index) = 0;
+
+  /**
+   * Get total trajectories size
+   */
+  virtual int getTrajectorySize() = 0;
 
   /**
    * @brief  Virtual destructor for the interface
    */
   virtual ~TrajectorySampleGenerator() {}
+
+  /**
+   * Virtual constructor (copying) for "virtual constructor idiom"
+   */
+  virtual TrajectorySampleGenerator * clone() const = 0;
 
 protected:
   TrajectorySampleGenerator() {}

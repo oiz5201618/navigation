@@ -73,17 +73,54 @@ namespace base_local_planner {
       }
       gen_id ++;
     }
-
-
     return traj_cost;
   }
 
-  bool SimpleScoredSamplingPlanner::findBestTrajectory(Trajectory& traj, std::vector<Trajectory>* all_explored) {
-    Trajectory loop_traj;
-    Trajectory best_traj;
-    double loop_traj_cost, best_traj_cost = -1;
+  void* SimpleScoredSamplingPlanner::parallelTrajectory(void* _range) {
+
+    int i;
     bool gen_success;
-    int count, count_valid;
+    double loop_traj_cost;
+    Trajectory loop_traj; //= new Trajectory;
+
+    ThreadsArg *range;// = new ThreadsArg;
+    range = (ThreadsArg *) _range;
+
+    ROS_DEBUG("TEST %d %d\n", range->start, range->end);
+
+    for(i = range->start; i <= range->end; i++) {
+      gen_success = range->gen_->nextTrajectory(loop_traj, i);
+      if (gen_success == false) {
+        // TODO use this for debugging
+        continue;
+      }
+
+      loop_traj_cost = range->this_planner->scoreTrajectory(loop_traj, range->best_cost);
+      //if (range->all_explored != NULL) {
+      //  loop_traj.cost_ = loop_traj_cost;
+      //  range->all_explored->push_back(loop_traj);
+      //}
+
+      if (loop_traj_cost >= 0) {//ROS_DEBUG("TEST7\n");
+        if (range->best_cost < 0 || loop_traj_cost < range->best_cost) {//ROS_DEBUG("TEST8\n");
+          range->best_cost = loop_traj_cost;//ROS_DEBUG("TEST9\n");
+          range->best_traj = loop_traj;//ROS_DEBUG("TEST10\n");
+        }
+      }
+    }
+    pthread_exit(range);
+  }
+
+  bool SimpleScoredSamplingPlanner::findBestTrajectory(Trajectory& traj, std::vector<Trajectory>* all_explored) {
+    Trajectory best_traj;
+    double best_traj_cost = -1;
+    int count, count_valid, traj_size, i;
+    pthread_t threads[THREAD_NUM];
+    ThreadsArg range[THREAD_NUM];
+    void *ret;
+    ThreadsArg* tmp_ret;
+    //ret = new ThreadsArg;
+
     for (std::vector<TrajectoryCostFunction*>::iterator loop_critic = critics_.begin(); loop_critic != critics_.end(); ++loop_critic) {
       TrajectoryCostFunction* loop_critic_p = *loop_critic;
       if (loop_critic_p->prepare() == false) {
@@ -93,33 +130,48 @@ namespace base_local_planner {
     }
 
     for (std::vector<TrajectorySampleGenerator*>::iterator loop_gen = gen_list_.begin(); loop_gen != gen_list_.end(); ++loop_gen) {
-      count = 0;
-      count_valid = 0;
-      TrajectorySampleGenerator* gen_ = *loop_gen;
-      while (gen_->hasMoreTrajectories()) {
-        gen_success = gen_->nextTrajectory(loop_traj);
-        if (gen_success == false) {
-          // TODO use this for debugging
-          continue;
-        }
-        loop_traj_cost = scoreTrajectory(loop_traj, best_traj_cost);
-        if (all_explored != NULL) {
-          loop_traj.cost_ = loop_traj_cost;
-          all_explored->push_back(loop_traj);
-        }
+      //count = 0;
+      //count_valid = 0;
+      TrajectorySampleGenerator* gen_ = *loop_gen;//TODO
+      traj_size = gen_->getTrajectorySize();
+      ROS_DEBUG("Evaluated %d trajectories", traj_size);
 
-        if (loop_traj_cost >= 0) {
-          count_valid++;
-          if (best_traj_cost < 0 || loop_traj_cost < best_traj_cost) {
-            best_traj_cost = loop_traj_cost;
-            best_traj = loop_traj;
-          }
-        }
-        count++;
-        if (max_samples_ > 0 && count >= max_samples_) {
-          break;
-        }        
+      // spilt task into THREAD_NUM pieces and initial thread argument
+      for(i = 0; i < THREAD_NUM; i++) {
+        range[i].best_cost = -1;
+        range[i].start = i * (traj_size / THREAD_NUM) + 1;
+        //range[i].gen_ = (TrajectorySampleGenerator *)malloc(sizeof(SimpleScoredSamplingPlanner));
+        //ROS_DEBUG("size of TrajectorySampleGenerator %d\n", sizeof(SimpleScoredSamplingPlanner));
+        range[i].gen_ = gen_->clone();//TODO
+        //range[i].all_explored = all_explored;//TODO
+        range[i].this_planner = this;//TODO
+
+        if(i == THREAD_NUM - 1)
+          range[i].end = traj_size - 1;
+        else
+          range[i].end = (i + 1) * (traj_size / THREAD_NUM);
       }
+
+      // threads create
+      for(i = 0; i < THREAD_NUM; i++) {
+        if(pthread_create(threads+i, NULL, parallelTrajectory, &range[i])) {
+          ROS_FATAL("Thread %d created fail.\n", i);
+          exit(1);
+        }
+      }
+
+      // waiting all threads finish tasks
+      for(i = 0; i < THREAD_NUM; i++) {
+        pthread_join(threads[i], &ret);
+
+        tmp_ret = (ThreadsArg *)ret;
+
+        if (best_traj_cost < 0 || tmp_ret->best_cost < best_traj_cost) {
+            best_traj_cost = tmp_ret->best_cost;
+            best_traj = tmp_ret->best_traj;
+        }
+      }
+
       if (best_traj_cost >= 0) {
         traj.xv_ = best_traj.xv_;
         traj.yv_ = best_traj.yv_;
@@ -132,7 +184,7 @@ namespace base_local_planner {
           traj.addPoint(px, py, pth);
         }
       }
-      ROS_DEBUG("Evaluated %d trajectories, found %d valid", count, count_valid);
+      //ROS_DEBUG("Evaluated %d trajectories, found %d valid", count, count_valid);
       if (best_traj_cost >= 0) {
         // do not try fallback generators
         break;
@@ -140,6 +192,4 @@ namespace base_local_planner {
     }
     return best_traj_cost >= 0;
   }
-
-  
-}// namespace
+}

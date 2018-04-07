@@ -41,6 +41,7 @@
 #include <base_local_planner/trajectory_sample_generator.h>
 #include <base_local_planner/local_planner_limits.h>
 #include <Eigen/Core>
+#include <ros/console.h>
 
 namespace base_local_planner {
 
@@ -66,6 +67,35 @@ public:
   }
 
   ~SimpleTrajectoryGenerator() {}
+
+  /**
+   * Copy constructors
+   */
+  SimpleTrajectoryGenerator(const SimpleTrajectoryGenerator &obj) {
+    next_sample_index_ = obj.next_sample_index_;
+    continued_acceleration_ = obj.continued_acceleration_;
+    discretize_by_time_ = obj.discretize_by_time_;
+    sim_time_ = obj.sim_time_; 
+    sim_granularity_ = obj.sim_granularity_;
+    angular_sim_granularity_ = obj.angular_sim_granularity_;
+    use_dwa_ = obj.use_dwa_;
+    sim_period_ = obj.sim_period_;
+    pos_ = obj.pos_;
+    vel_ = obj.vel_;
+
+    limits_ = new base_local_planner::LocalPlannerLimits;
+    *limits_ = *obj.limits_;
+
+    sample_params_.reserve(obj.sample_params_.size());
+    copy(obj.sample_params_.begin(), obj.sample_params_.end(), back_inserter(sample_params_));
+  }
+
+  /**
+   * Virtual constructor (copying) for "virtual constructor idiom"
+   */
+  SimpleTrajectoryGenerator * clone () const {
+    return new SimpleTrajectoryGenerator(*this);
+  }
 
   /**
    * @param pos current robot position
@@ -123,8 +153,12 @@ public:
   /**
    * Whether this generator can create more trajectories
    */
-  bool nextTrajectory(Trajectory &traj);
+  bool nextTrajectory(Trajectory &traj, int index);
 
+  /**
+   * Get total trajectories size
+   */
+  int getTrajectorySize();
 
   static Eigen::Vector3f computeNewPositions(const Eigen::Vector3f& pos,
       const Eigen::Vector3f& vel, double dt);
