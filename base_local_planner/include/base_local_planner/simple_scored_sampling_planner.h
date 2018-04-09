@@ -46,7 +46,7 @@
 #include <base_local_planner/simple_trajectory_generator.h>
 #include <pthread.h>
 
-#define THREAD_NUM 4
+#define THREAD_NUM 1
 
 namespace base_local_planner {
 
@@ -121,7 +121,7 @@ public:
 
   int start;
   int end;
-  int best_cost;
+  double best_cost;
   Trajectory best_traj;
   TrajectorySampleGenerator* gen_;
   //std::vector<Trajectory>* all_explored;

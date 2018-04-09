@@ -166,15 +166,15 @@ int SimpleTrajectoryGenerator::getTrajectorySize() {
  * Create and return the next sample trajectory
  */
 bool SimpleTrajectoryGenerator::nextTrajectory(Trajectory &comp_traj, int index) {
-  bool result = false;ROS_DEBUG("TEST21\n");
-  if (hasMoreTrajectories()) {ROS_DEBUG("TEST22\n");
+  bool result = false;
+  if (hasMoreTrajectories()) {
     if (generateTrajectory(
         pos_,
         vel_,
         sample_params_[index],
         comp_traj)) {
       result = true;
-    }ROS_DEBUG("TEST23\n");
+    }
   }
   //next_sample_index_++;
   return result;

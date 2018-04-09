@@ -81,9 +81,9 @@ namespace base_local_planner {
     int i;
     bool gen_success;
     double loop_traj_cost;
-    Trajectory loop_traj; //= new Trajectory;
+    Trajectory loop_traj;
 
-    ThreadsArg *range;// = new ThreadsArg;
+    ThreadsArg *range;
     range = (ThreadsArg *) _range;
 
     ROS_DEBUG("TEST %d %d\n", range->start, range->end);
@@ -96,18 +96,22 @@ namespace base_local_planner {
       }
 
       loop_traj_cost = range->this_planner->scoreTrajectory(loop_traj, range->best_cost);
+      //printf("Traj %d cost: %f\n", i, loop_traj_cost);
       //if (range->all_explored != NULL) {
       //  loop_traj.cost_ = loop_traj_cost;
       //  range->all_explored->push_back(loop_traj);
       //}
 
-      if (loop_traj_cost >= 0) {//ROS_DEBUG("TEST7\n");
-        if (range->best_cost < 0 || loop_traj_cost < range->best_cost) {//ROS_DEBUG("TEST8\n");
-          range->best_cost = loop_traj_cost;//ROS_DEBUG("TEST9\n");
-          range->best_traj = loop_traj;//ROS_DEBUG("TEST10\n");
+      if (loop_traj_cost >= 0) {
+        if (range->best_cost < 0 || loop_traj_cost < range->best_cost) {
+          range->best_cost = loop_traj_cost;
+          range->best_traj = loop_traj;
         }
       }
     }
+
+    //printf("----> Thread %d - %d best_cost: %f\n", range->start, range->end, range->best_cost);
+
     pthread_exit(range);
   }
 
@@ -140,8 +144,6 @@ namespace base_local_planner {
       for(i = 0; i < THREAD_NUM; i++) {
         range[i].best_cost = -1;
         range[i].start = i * (traj_size / THREAD_NUM) + 1;
-        //range[i].gen_ = (TrajectorySampleGenerator *)malloc(sizeof(SimpleScoredSamplingPlanner));
-        //ROS_DEBUG("size of TrajectorySampleGenerator %d\n", sizeof(SimpleScoredSamplingPlanner));
         range[i].gen_ = gen_->clone();//TODO
         //range[i].all_explored = all_explored;//TODO
         range[i].this_planner = this;//TODO
@@ -154,7 +156,7 @@ namespace base_local_planner {
 
       // threads create
       for(i = 0; i < THREAD_NUM; i++) {
-        if(pthread_create(threads+i, NULL, parallelTrajectory, &range[i])) {
+        if(pthread_create(threads + i, NULL, parallelTrajectory, &range[i])) {
           ROS_FATAL("Thread %d created fail.\n", i);
           exit(1);
         }
@@ -166,11 +168,17 @@ namespace base_local_planner {
 
         tmp_ret = (ThreadsArg *)ret;
 
-        if (best_traj_cost < 0 || tmp_ret->best_cost < best_traj_cost) {
+        //printf("*** Thread %d cost: %f\n", i, tmp_ret->best_cost);
+
+        if (tmp_ret->best_cost >= 0) {
+          if (best_traj_cost < 0 || tmp_ret->best_cost < best_traj_cost) {
             best_traj_cost = tmp_ret->best_cost;
             best_traj = tmp_ret->best_traj;
+          }
         }
       }
+
+      //printf("!!! best cost: %f\n\n\n", best_traj_cost);
 
       if (best_traj_cost >= 0) {
         traj.xv_ = best_traj.xv_;
