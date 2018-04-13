@@ -38,6 +38,8 @@
 #ifndef SIMPLE_SCORED_SAMPLING_PLANNER_H_
 #define SIMPLE_SCORED_SAMPLING_PLANNER_H_
 
+#include <ros/ros.h>
+
 #include <vector>
 #include <base_local_planner/trajectory.h>
 #include <base_local_planner/trajectory_cost_function.h>
@@ -45,8 +47,6 @@
 #include <base_local_planner/trajectory_search.h>
 #include <base_local_planner/simple_trajectory_generator.h>
 #include <pthread.h>
-
-#define THREAD_NUM 1
 
 namespace base_local_planner {
 
@@ -106,6 +106,7 @@ private:
   std::vector<TrajectoryCostFunction*> critics_;
 
   int max_samples_;
+  int threads_num_;
 };
 
 /**

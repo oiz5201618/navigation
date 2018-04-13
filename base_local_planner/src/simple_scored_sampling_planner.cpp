@@ -45,6 +45,9 @@ namespace base_local_planner {
     max_samples_ = max_samples;
     gen_list_ = gen_list;
     critics_ = critics;
+
+    ros::NodeHandle private_nh("~");
+    private_nh.param("threads_num", threads_num_, 1);
   }
 
   double SimpleScoredSamplingPlanner::scoreTrajectory(Trajectory& traj, double best_traj_cost) {
@@ -109,9 +112,6 @@ namespace base_local_planner {
         }
       }
     }
-
-    //printf("----> Thread %d - %d best_cost: %f\n", range->start, range->end, range->best_cost);
-
     pthread_exit(range);
   }
 
@@ -119,8 +119,8 @@ namespace base_local_planner {
     Trajectory best_traj;
     double best_traj_cost = -1;
     int count, count_valid, traj_size, i;
-    pthread_t threads[THREAD_NUM];
-    ThreadsArg range[THREAD_NUM];
+    pthread_t threads[threads_num_];
+    ThreadsArg range[threads_num_];
     void *ret;
     ThreadsArg* tmp_ret;
     //ret = new ThreadsArg;
@@ -140,22 +140,22 @@ namespace base_local_planner {
       traj_size = gen_->getTrajectorySize();
       ROS_DEBUG("Evaluated %d trajectories", traj_size);
 
-      // spilt task into THREAD_NUM pieces and initial thread argument
-      for(i = 0; i < THREAD_NUM; i++) {
+      // spilt task into threads_num_ pieces and initial thread argument
+      for(i = 0; i < threads_num_; i++) {
         range[i].best_cost = -1;
-        range[i].start = i * (traj_size / THREAD_NUM) + 1;
+        range[i].start = i * (traj_size / threads_num_) + 1;
         range[i].gen_ = gen_->clone();//TODO
         //range[i].all_explored = all_explored;//TODO
         range[i].this_planner = this;//TODO
 
-        if(i == THREAD_NUM - 1)
+        if(i == threads_num_ - 1)
           range[i].end = traj_size - 1;
         else
-          range[i].end = (i + 1) * (traj_size / THREAD_NUM);
+          range[i].end = (i + 1) * (traj_size / threads_num_);
       }
 
       // threads create
-      for(i = 0; i < THREAD_NUM; i++) {
+      for(i = 0; i < threads_num_; i++) {
         if(pthread_create(threads + i, NULL, parallelTrajectory, &range[i])) {
           ROS_FATAL("Thread %d created fail.\n", i);
           exit(1);
@@ -163,7 +163,7 @@ namespace base_local_planner {
       }
 
       // waiting all threads finish tasks
-      for(i = 0; i < THREAD_NUM; i++) {
+      for(i = 0; i < threads_num_; i++) {
         pthread_join(threads[i], &ret);
 
         tmp_ret = (ThreadsArg *)ret;
