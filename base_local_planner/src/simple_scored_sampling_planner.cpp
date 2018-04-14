@@ -47,7 +47,7 @@ namespace base_local_planner {
     critics_ = critics;
 
     ros::NodeHandle private_nh("~");
-    private_nh.param("threads_num", threads_num_, 1);
+    private_nh.param("scored_sampling_threads_num", threads_num_, 1);
   }
 
   double SimpleScoredSamplingPlanner::scoreTrajectory(Trajectory& traj, double best_traj_cost) {
