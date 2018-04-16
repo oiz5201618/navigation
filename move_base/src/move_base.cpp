@@ -163,6 +163,15 @@ namespace move_base {
     //we'll start executing recovery behaviors at the beginning of our list
     recovery_index_ = 0;
 
+    //open benchmark file
+    std::string bench_file;
+    const char *cstr;
+    private_nh.param("benchmark_data_file", bench_file, std::string("data.txt"));
+    cstr = bench_file.c_str();
+    benchmark_file.open(cstr);
+    accumlate_time = 0.0;
+    control_times = 0;
+
     //we're all set up now so we can start the action server
     as_->start();
 
@@ -760,6 +769,20 @@ namespace move_base {
       //check if execution of the goal has completed in some way
 
       ros::WallDuration t_diff = ros::WallTime::now() - start;
+
+      /* uncomment for control Loop timing
+      control_times++;
+
+      // Discard the first time data.
+      if (control_times == 1) {
+
+      } else {
+        accumlate_time += t_diff.toSec();
+        benchmark_file << (control_times - 1) << "\t" << std::setprecision(9) << t_diff.toSec() << "\t" << accumlate_time / (control_times - 1) << "\n";
+      }
+      */
+
+      //printf("Full control cycle time: %.9f\n", t_diff.toSec());
       ROS_DEBUG_NAMED("move_base","Full control cycle time: %.9f\n", t_diff.toSec());
 
       r.sleep();
