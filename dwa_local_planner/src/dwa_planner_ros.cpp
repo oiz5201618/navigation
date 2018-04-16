@@ -122,6 +122,15 @@ namespace dwa_local_planner {
       dsrv_ = new dynamic_reconfigure::Server<DWAPlannerConfig>(private_nh);
       dynamic_reconfigure::Server<DWAPlannerConfig>::CallbackType cb = boost::bind(&DWAPlannerROS::reconfigureCB, this, _1, _2);
       dsrv_->setCallback(cb);
+
+      //open benchmark file
+      std::string bench_file;
+      const char *cstr;
+      private_nh.param( "benchmark_file_path", bench_file, std::string("data.txt"));
+      cstr = bench_file.c_str();
+      benchmark_file.open(cstr);
+      accumlate_time = 0.0;
+      control_times = 0;
     }
     else{
       ROS_WARN("This planner has already been initialized, doing nothing.");
@@ -203,8 +212,18 @@ namespace dwa_local_planner {
     start_t = start.tv_sec + double(start.tv_usec) / 1e6;
     end_t = end.tv_sec + double(end.tv_usec) / 1e6;
     t_diff = end_t - start_t;
-    ROS_INFO("Cycle time: %.9f", t_diff);
+    
+    control_times++;
+
+    // Discard the first time data.
+    if (control_times == 1) {
+
+    } else {
+      accumlate_time += t_diff;
+      benchmark_file << (control_times - 1) << "\t" << std::setprecision(9) << t_diff << "\t" << accumlate_time / (control_times - 1) << "\n";
+    }
     */
+    //ROS_INFO("Cycle time: %.9f", t_diff);
 
     //pass along drive commands
     cmd_vel.linear.x = drive_cmds.getOrigin().getX();
