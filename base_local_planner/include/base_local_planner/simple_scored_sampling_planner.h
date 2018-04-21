@@ -48,7 +48,34 @@
 #include <base_local_planner/simple_trajectory_generator.h>
 #include <pthread.h>
 
+#define MAX_NUM 64
+
 namespace base_local_planner {
+
+// forward declare
+class SimpleScoredSamplingPlanner;
+
+/**
+ * @class ThreadArgument
+ * @brief Struct for passing into thread
+ */
+class ThreadsArg{
+
+public:
+
+  ~ThreadsArg() {}
+
+  ThreadsArg() {}
+
+  int start;
+  int end;
+  double best_cost;
+  Trajectory best_traj;
+  TrajectorySampleGenerator* gen_;
+  //std::vector<Trajectory>* all_explored;
+  SimpleScoredSamplingPlanner *this_planner;
+
+};
 
 /**
  * @class SimpleScoredSamplingPlanner
@@ -105,31 +132,12 @@ private:
   std::vector<TrajectorySampleGenerator*> gen_list_;
   std::vector<TrajectoryCostFunction*> critics_;
 
+  // Multi-threading parameter
   int max_samples_;
   int threads_num_;
+  pthread_t threads[MAX_NUM];
+  ThreadsArg range[MAX_NUM];
 };
-
-/**
- * @class ThreadRange
- */
-class ThreadsArg{
-
-public:
-
-  ~ThreadsArg() {}
-
-  ThreadsArg() {}
-
-  int start;
-  int end;
-  double best_cost;
-  Trajectory best_traj;
-  TrajectorySampleGenerator* gen_;
-  //std::vector<Trajectory>* all_explored;
-  SimpleScoredSamplingPlanner *this_planner;
-
-};
-
 
 } // namespace
 

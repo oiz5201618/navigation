@@ -85,7 +85,7 @@ namespace base_local_planner {
     bool gen_success;
     double loop_traj_cost;
     Trajectory loop_traj;
-
+    
     ThreadsArg *range;
     range = (ThreadsArg *) _range;
 
@@ -97,7 +97,7 @@ namespace base_local_planner {
         // TODO use this for debugging
         continue;
       }
-
+      
       loop_traj_cost = range->this_planner->scoreTrajectory(loop_traj, range->best_cost);
       //printf("Traj %d cost: %f\n", i, loop_traj_cost);
       //if (range->all_explored != NULL) {
@@ -119,8 +119,6 @@ namespace base_local_planner {
     Trajectory best_traj;
     double best_traj_cost = -1;
     int count, count_valid, traj_size, i;
-    pthread_t threads[threads_num_];
-    ThreadsArg range[threads_num_];
     void *ret;
     ThreadsArg* tmp_ret;
     //ret = new ThreadsArg;
@@ -164,7 +162,9 @@ namespace base_local_planner {
 
       // waiting all threads finish tasks
       for(i = 0; i < threads_num_; i++) {
-        pthread_join(threads[i], &ret);
+        int err = pthread_join(threads[i], &ret);
+        if (err)
+          perror("pthread_join failed: ");
 
         tmp_ret = (ThreadsArg *)ret;
 
