@@ -85,7 +85,7 @@ namespace base_local_planner {
     bool gen_success;
     double loop_traj_cost;
     Trajectory loop_traj;
-    
+
     ThreadsArg *range;
     range = (ThreadsArg *) _range;
 
@@ -97,7 +97,7 @@ namespace base_local_planner {
         // TODO use this for debugging
         continue;
       }
-      
+
       loop_traj_cost = range->this_planner->scoreTrajectory(loop_traj, range->best_cost);
       //printf("Traj %d cost: %f\n", i, loop_traj_cost);
       //if (range->all_explored != NULL) {
