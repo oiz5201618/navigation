@@ -234,6 +234,7 @@ namespace move_base {
       bool setup_, p_freq_change_, c_freq_change_;
       bool new_global_plan_;
 
+      // benchmark parameter
       std::ofstream benchmark_file;
       double accumlate_time;
       int control_times;

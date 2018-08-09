@@ -757,38 +757,45 @@ namespace move_base {
       }
 
       //for timing that gives real time even in simulation
-      ros::WallTime start = ros::WallTime::now();
+      //ros::WallTime start = ros::WallTime::now();
+      /* For timing uncomment
+      struct timeval start, end;
+      double start_t, end_t, t_diff;
+      gettimeofday(&start, NULL);
+      */
 
       //the real work on pursuing a goal is done here
       bool done = executeCycle(goal, global_plan);
 
-      //if we're done, then we'll return from execute
-      if(done)
-        return;
+      /* For timing uncomment
+      gettimeofday(&end, NULL);
+      start_t = start.tv_sec + double(start.tv_usec) / 1e6;
+      end_t = end.tv_sec + double(end.tv_usec) / 1e6;
+      t_diff = end_t - start_t;
 
-      //check if execution of the goal has completed in some way
-
-      ros::WallDuration t_diff = ros::WallTime::now() - start;
-
-      /* uncomment for control Loop timing
       control_times++;
 
       // Discard the first time data.
       if (control_times == 1) {
 
       } else {
-        accumlate_time += t_diff.toSec();
-        benchmark_file << (control_times - 1) << "\t" << std::setprecision(9) << t_diff.toSec() << "\t" << accumlate_time / (control_times - 1) << "\n";
+        accumlate_time += t_diff;
+        benchmark_file << (control_times - 1) << "\t" << std::setprecision(9) << t_diff << "\t" << accumlate_time / (control_times - 1) << "\n";
       }
       */
 
-      //printf("Full control cycle time: %.9f\n", t_diff.toSec());
-      ROS_DEBUG_NAMED("move_base","Full control cycle time: %.9f\n", t_diff.toSec());
+      //if we're done, then we'll return from execute
+      if(done)
+        return;
+
+      //check if execution of the goal has completed in some way
+      //ros::WallDuration t_diff = ros::WallTime::now() - start;
+      //ROS_DEBUG_NAMED("move_base","Full control cycle time: %.9f\n", t_diff.toSec());
 
       r.sleep();
       //make sure to sleep for the remainder of our cycle time
-      if(r.cycleTime() > ros::Duration(1 / controller_frequency_) && state_ == CONTROLLING)
-        ROS_WARN("Control loop missed its desired rate of %.4fHz... the loop actually took %.4f seconds", controller_frequency_, r.cycleTime().toSec());
+      // if(r.cycleTime() > ros::Duration(1 / controller_frequency_) && state_ == CONTROLLING)
+      //   ROS_WARN("Control loop missed its desired rate of %.4fHz... the loop actually took %.4f seconds", controller_frequency_, r.cycleTime().toSec());
     }
 
     //wake up the planner thread so that it can exit cleanly
@@ -892,6 +899,12 @@ namespace move_base {
       case CONTROLLING:
         ROS_DEBUG_NAMED("move_base","In controlling state.");
 
+        // For timing uncomment
+        struct timeval start, end;
+        double start_t, end_t, t_diff;
+        gettimeofday(&start, NULL);
+        //
+
         //check to see if we've reached our goal
         if(tc_->isGoalReached()){
           ROS_DEBUG_NAMED("move_base","Goal reached!");
@@ -954,6 +967,15 @@ namespace move_base {
         }
         }
 
+        // For timing uncomment
+        gettimeofday(&end, NULL);
+        start_t = start.tv_sec + double(start.tv_usec) / 1e6;
+        end_t = end.tv_sec + double(end.tv_usec) / 1e6;
+        t_diff = end_t - start_t;
+        control_times++;
+        accumlate_time += t_diff;
+        benchmark_file << control_times << "\t" << std::setprecision(9) << t_diff << "\t" << accumlate_time / control_times << "\n";
+        //
         break;
 
       //we'll try to clear out space with any user-provided recovery behaviors
