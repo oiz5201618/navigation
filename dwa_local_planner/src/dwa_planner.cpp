@@ -182,6 +182,15 @@ namespace dwa_local_planner {
     scored_sampling_planner_ = base_local_planner::SimpleScoredSamplingPlanner(generator_list, critics);
 
     private_nh.param("cheat_factor", cheat_factor_, 1.0);
+
+    //open benchmark file
+    std::string bench_file;
+    const char *cstr;
+    private_nh.param("dwa_benchmark_file_path", bench_file, std::string("data.txt"));
+    cstr = bench_file.c_str();
+    benchmark_file.open(cstr);
+    accumlate_time = 0.0;
+    control_times = 0;
   }
 
   // used for visualization only, total_costs are not really total costs
@@ -319,7 +328,24 @@ namespace dwa_local_planner {
     result_traj_.cost_ = -7;
     // find best trajectory by sampling and scoring the samples
     std::vector<base_local_planner::Trajectory> all_explored;
+
+    // For timing uncomment
+    struct timeval start, end;
+    double start_t, end_t, t_diff;
+    gettimeofday(&start, NULL);
+
     scored_sampling_planner_.findBestTrajectory(result_traj_, &all_explored);
+
+    // For timing uncomment
+    gettimeofday(&end, NULL);
+    start_t = start.tv_sec + double(start.tv_usec) / 1e6;
+    end_t = end.tv_sec + double(end.tv_usec) / 1e6;
+    t_diff = end_t - start_t;
+    
+    control_times++;
+    accumlate_time += t_diff;
+    benchmark_file << control_times << "\t" << std::setprecision(9) << t_diff << "\t" << accumlate_time / control_times << "\n";
+    //
 
     if(publish_traj_pc_)
     {

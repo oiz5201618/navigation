@@ -63,6 +63,10 @@
 
 #include <nav_msgs/Path.h>
 
+#include <iostream>
+#include <fstream>
+#include <iomanip>
+
 namespace dwa_local_planner {
   /**
    * @class DWAPlanner
@@ -179,6 +183,11 @@ namespace dwa_local_planner {
       base_local_planner::TwirlingCostFunction twirling_costs_;
 
       base_local_planner::SimpleScoredSamplingPlanner scored_sampling_planner_;
+
+      // for benchmark
+      std::ofstream benchmark_file;
+      double accumlate_time;
+      int control_times;
   };
 };
 #endif
