@@ -67,6 +67,9 @@ public:
 
   ThreadsArg() {}
 
+  int case_num; // how much cases that one thread need to take care
+  int case_index[10000]; // default 1000 cases
+  int thread_index;
   int start;
   int end;
   double best_cost;
