@@ -123,14 +123,6 @@ namespace dwa_local_planner {
       dynamic_reconfigure::Server<DWAPlannerConfig>::CallbackType cb = boost::bind(&DWAPlannerROS::reconfigureCB, this, _1, _2);
       dsrv_->setCallback(cb);
 
-      //open benchmark file
-      std::string bench_file;
-      const char *cstr;
-      private_nh.param( "benchmark_file_path", bench_file, std::string("data.txt"));
-      cstr = bench_file.c_str();
-      benchmark_file.open(cstr);
-      accumlate_time = 0.0;
-      control_times = 0;
     }
     else{
       ROS_WARN("This planner has already been initialized, doing nothing.");
@@ -193,12 +185,6 @@ namespace dwa_local_planner {
     tf::Stamped<tf::Pose> robot_vel;
     odom_helper_.getRobotVel(robot_vel);
 
-    /* For timing uncomment
-    struct timeval start, end;
-    double start_t, end_t, t_diff;
-    gettimeofday(&start, NULL);
-    */
-
     //compute what trajectory to drive along
     tf::Stamped<tf::Pose> drive_cmds;
     drive_cmds.frame_id_ = costmap_ros_->getBaseFrameID();
@@ -206,23 +192,6 @@ namespace dwa_local_planner {
     // call with updated footprint
     base_local_planner::Trajectory path = dp_->findBestPath(global_pose, robot_vel, drive_cmds, costmap_ros_->getRobotFootprint());
     //ROS_ERROR("Best: %.2f, %.2f, %.2f, %.2f", path.xv_, path.yv_, path.thetav_, path.cost_);
-
-    /* For timing uncomment
-    gettimeofday(&end, NULL);
-    start_t = start.tv_sec + double(start.tv_usec) / 1e6;
-    end_t = end.tv_sec + double(end.tv_usec) / 1e6;
-    t_diff = end_t - start_t;
-    
-    control_times++;
-
-    // Discard the first time data.
-    if (control_times == 1) {
-
-    } else {
-      accumlate_time += t_diff;
-      benchmark_file << (control_times - 1) << "\t" << std::setprecision(9) << t_diff << "\t" << accumlate_time / (control_times - 1) << "\n";
-    }
-    */
     //ROS_INFO("Cycle time: %.9f", t_diff);
 
     //pass along drive commands

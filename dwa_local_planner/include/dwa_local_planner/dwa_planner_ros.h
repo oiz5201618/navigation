@@ -57,10 +57,6 @@
 
 #include <dwa_local_planner/dwa_planner.h>
 
-#include <iostream>
-#include <fstream>
-#include <iomanip>
-
 namespace dwa_local_planner {
   /**
    * @class DWAPlannerROS
@@ -159,10 +155,6 @@ namespace dwa_local_planner {
       base_local_planner::OdometryHelperRos odom_helper_;
       std::string odom_topic_;
 
-      // for benchmark
-      std::ofstream benchmark_file;
-      double accumlate_time;
-      int control_times;
   };
 };
 #endif
