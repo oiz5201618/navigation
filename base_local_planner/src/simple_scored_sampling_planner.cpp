@@ -80,6 +80,12 @@ namespace base_local_planner {
   }
 
   void* SimpleScoredSamplingPlanner::parallelTrajectory(void* _range) {
+
+    /* For timing uncomment
+    struct timeval start, end;
+    double start_t, end_t, t_diff;
+    gettimeofday(&start, NULL);
+    */
     int i;
     bool gen_success;
     double loop_traj_cost;
@@ -88,9 +94,7 @@ namespace base_local_planner {
     ThreadsArg *range;
     range = (ThreadsArg *) _range;
 
-    ROS_DEBUG("TEST %d %d\n", range->start, range->end);
-
-    // 2nd version
+    // real task for each thread
     for (i = 0; i < range->case_num; i++) {
       gen_success = range->gen_->nextTrajectory(loop_traj, range->case_index[i]);
       if (gen_success == false) {
@@ -113,28 +117,15 @@ namespace base_local_planner {
       }
     }
 
-    // 1st version
-    // for (i = range->start; i < range->end; i++) {
-    //   gen_success = range->gen_->nextTrajectory(loop_traj, i);
-    //   if (gen_success == false) {
-    //     // TODO use this for debugging
-    //     continue;
-    //   }
+    /* For timing uncomment
+    gettimeofday(&end, NULL);
+    start_t = start.tv_sec + double(start.tv_usec) / 1e6;
+    end_t = end.tv_sec + double(end.tv_usec) / 1e6;
+    t_diff = end_t - start_t;
 
-    //   loop_traj_cost = range->this_planner->scoreTrajectory(loop_traj, range->best_cost);
-    //   //printf("Traj %d cost: %f\n", i, loop_traj_cost);
-    //   //if (range->all_explored != NULL) {
-    //   //  loop_traj.cost_ = loop_traj_cost;
-    //   //  range->all_explored->push_back(loop_traj);
-    //   //}
+    printf("thread %d time: %lf\n", range->thread_index, t_diff);
+    */
 
-    //   if (loop_traj_cost >= 0) {
-    //     if (range->best_cost < 0 || loop_traj_cost < range->best_cost) {
-    //       range->best_cost = loop_traj_cost;
-    //       range->best_traj = loop_traj;
-    //     }
-    //   }
-    // }
     pthread_exit(range);
   }
 
@@ -145,6 +136,11 @@ namespace base_local_planner {
     void *ret;
     ThreadsArg* tmp_ret;
     //ret = new ThreadsArg;
+
+    /* For timing uncomment
+    static int count1 = 0;
+    static double acc_time = 0;
+    */
 
     for (std::vector<TrajectoryCostFunction*>::iterator loop_critic = critics_.begin(); loop_critic != critics_.end(); ++loop_critic) {
       TrajectoryCostFunction* loop_critic_p = *loop_critic;
@@ -159,7 +155,13 @@ namespace base_local_planner {
       //count_valid = 0;
       TrajectorySampleGenerator* gen_ = *loop_gen;//TODO
       traj_size = gen_->getTrajectorySize();
-      ROS_DEBUG("Evaluated %d trajectories", traj_size);
+      //ROS_DEBUG("Evaluated %d trajectories", traj_size);
+
+      /* For timing uncomment
+      struct timeval start, end;
+      double start_t, end_t, t_diff;
+      gettimeofday(&start, NULL);
+      */
 
       // spilt task into threads_num_ pieces and initial thread argument
       int rem_temp = traj_size % threads_num_;
@@ -183,6 +185,26 @@ namespace base_local_planner {
 
       }
 
+      /* For timing uncomment
+      gettimeofday(&end, NULL);
+      start_t = start.tv_sec + double(start.tv_usec) / 1e6;
+      end_t = end.tv_sec + double(end.tv_usec) / 1e6;
+      t_diff = end_t - start_t;
+
+      printf("spilt time: %lf\n", t_diff);
+      */
+
+      // for (i = 0; i < threads_num_; i++) {
+      //   printf("-----------thread %d-----------\n", i);
+      //   printf("case_num = %d\n", range[i].case_num);
+      //   for (int j = 0; j < range[i].case_num; j++) {
+      //     printf("%d ", range[i].case_index[j]);
+      //     if (j % 10 == 0)
+      //       printf("\n");
+      //   }
+      //   printf("\n");
+      // }
+
       // threads create
       for (i = 0; i < threads_num_; i++) {
         if (pthread_create(threads + i, NULL, parallelTrajectory, &range[i])) {
@@ -191,6 +213,9 @@ namespace base_local_planner {
         }
       }
 
+      /* For timing uncomment
+      gettimeofday(&start, NULL);
+      */
       // waiting all threads finish tasks
       for(i = 0; i < threads_num_; i++) {
         int err = pthread_join(threads[i], &ret);
@@ -207,6 +232,18 @@ namespace base_local_planner {
         }
       }
 
+      /* For timing uncomment
+      gettimeofday(&end, NULL);
+      start_t = start.tv_sec + double(start.tv_usec) / 1e6;
+      end_t = end.tv_sec + double(end.tv_usec) / 1e6;
+      t_diff = end_t - start_t;
+
+      acc_time += t_diff;
+      count1++;
+
+      printf("thread_join time: %lf\n", t_diff);
+      printf("---ACC thread_join time: %lf\n", acc_time/count1);
+      */
       //printf("!!! best cost: %f\n\n\n", best_traj_cost);
 
       if (best_traj_cost >= 0) {
