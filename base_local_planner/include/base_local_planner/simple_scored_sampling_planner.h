@@ -49,7 +49,7 @@
 #include <pthread.h>
 
 #define MAX_NUM 64
-#define THREAD_TASK 10000
+#define MAX_THREAD_TASK 10000
 
 namespace base_local_planner {
 
@@ -69,7 +69,7 @@ public:
   ThreadsArg() {}
 
   int case_num; // how much cases that one thread need to take care
-  int case_index[THREAD_TASK]; // MAX default 10000 cases for one threads
+  int case_index[THREAD_TASK]; // MAX default 10000 cases for one thread
   int thread_index;
   int start;
   int end;
@@ -137,7 +137,7 @@ private:
   std::vector<TrajectoryCostFunction*> critics_;
 
   int max_samples_;
-  
+
   // Multi-threading parameter
   int threads_num_;
   pthread_t threads[MAX_NUM];
