@@ -69,7 +69,7 @@ public:
   ThreadsArg() {}
 
   int case_num; // how much cases that one thread need to take care
-  int case_index[THREAD_TASK]; // MAX default 10000 cases for one thread
+  int case_index[MAX_THREAD_TASK]; // MAX default 10000 cases for one thread
   int thread_index;
   int start;
   int end;
