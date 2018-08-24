@@ -48,6 +48,16 @@ namespace base_local_planner {
 
     ros::NodeHandle private_nh("~");
     private_nh.param("scored_sampling_threads_num", threads_num_, 1);
+    //printf("SimpleScoredSamplingPlanner init\n");
+
+    // spilt task into threads_num_ pieces and initial thread argument
+    for (int i = 0; i < MAX_THREAD_TASK; i++) {
+      for (int j = 0; j < threads_num_; j++) {
+        range[j].case_index[i] = threads_num_ * i + j;
+      }
+    }
+    for (int i = 0; i < threads_num_; i++)
+      range[i].thread_index = i;
   }
 
   double SimpleScoredSamplingPlanner::scoreTrajectory(Trajectory& traj, double best_traj_cost) {
@@ -166,8 +176,6 @@ namespace base_local_planner {
       // spilt task into threads_num_ pieces and initial thread argument
       int rem_temp = traj_size % threads_num_;
       for (i = 0; i < threads_num_; i++) {
- 
-        range[i].thread_index = i;
 
         // record cases number per threads
         if (i < rem_temp)
@@ -175,14 +183,10 @@ namespace base_local_planner {
         else
           range[i].case_num = traj_size / threads_num_;
 
-        for (int j = 0; j < range[i].case_num; j++)
-          range[i].case_index[j] = j * threads_num_ + i;
-
         range[i].best_cost = -1;
         range[i].gen_ = gen_->clone();//TODO
         //range[i].all_explored = all_explored;//TODO
         range[i].this_planner = this;//TODO
-
       }
 
       /* For timing uncomment
