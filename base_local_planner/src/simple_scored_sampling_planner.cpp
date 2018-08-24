@@ -48,6 +48,16 @@ namespace base_local_planner {
 
     ros::NodeHandle private_nh("~");
     private_nh.param("scored_sampling_threads_num", threads_num_, 1);
+    //printf("SimpleScoredSamplingPlanner init\n");
+
+    // spilt task into threads_num_ pieces and initial thread argument
+    for (int i = 0; i < MAX_THREAD_TASK; i++) {
+      for (int j = 0; j < threads_num_; j++) {
+        range[j].case_index[i] = threads_num_ * i + j;
+      }
+    }
+    for (int i = 0; i < threads_num_; i++)
+      range[i].thread_index = i;
   }
 
   double SimpleScoredSamplingPlanner::scoreTrajectory(Trajectory& traj, double best_traj_cost) {
@@ -82,8 +92,8 @@ namespace base_local_planner {
   void* SimpleScoredSamplingPlanner::parallelTrajectory(void* _range) {
 
     /* For timing uncomment
-    struct timeval start, end;
-    double start_t, end_t, t_diff;
+    struct timeval start, end, start1, end1, start2, end2;
+    double start_t, end_t, t_diff, start_t1, end_t1, t_diff1, start_t2, end_t2, t_diff2;
     gettimeofday(&start, NULL);
     */
     int i;
@@ -94,36 +104,86 @@ namespace base_local_planner {
     ThreadsArg *range;
     range = (ThreadsArg *) _range;
 
+    int count = 0;
+    int all_count = 0;
+
     // real task for each thread
-    for (i = 0; i < range->case_num; i++) {
-      gen_success = range->gen_->nextTrajectory(loop_traj, range->case_index[i]);
-      if (gen_success == false) {
-        // TODO use this for debugging
-        continue;
-      }
-
-      loop_traj_cost = range->this_planner->scoreTrajectory(loop_traj, range->best_cost);
-      //printf("Traj %d cost: %f\n", i, loop_traj_cost);
-      //if (range->all_explored != NULL) {
-      //  loop_traj.cost_ = loop_traj_cost;
-      //  range->all_explored->push_back(loop_traj);
-      //}
-
-      if (loop_traj_cost >= 0) {
-        if (range->best_cost < 0 || loop_traj_cost < range->best_cost) {
-          range->best_cost = loop_traj_cost;
-          range->best_traj = loop_traj;
+    if (range->thread_index == 0) {
+      for (i = 0; i < range->case_num; i++) {
+        
+        /* For timing uncomment
+        gettimeofday(&start1, NULL);
+        */
+        gen_success = range->gen_->nextTrajectory(loop_traj, range->case_index[i], range->thread_index);
+        /* For timing uncomment
+        gettimeofday(&end1, NULL);
+        start_t1 = start1.tv_sec + double(start1.tv_usec) / 1e6;
+        end_t1 = end1.tv_sec + double(end1.tv_usec) / 1e6;
+        t_diff1 = end_t1 - start_t1;
+        printf("thread %d nextTrajectory time: %lf\n", range->thread_index, t_diff1);
+        */
+        if (gen_success == false) {
+          count++;
+          // TODO use this for debugging
+          continue;
         }
+        /* For timing uncomment
+        gettimeofday(&start2, NULL);
+        */
+        loop_traj_cost = range->this_planner->scoreTrajectory(loop_traj, range->best_cost);
+        /* For timing uncomment
+        gettimeofday(&end2, NULL);
+        start_t2 = start2.tv_sec + double(start2.tv_usec) / 1e6;
+        end_t2 = end2.tv_sec + double(end2.tv_usec) / 1e6;
+        t_diff2 = end_t2 - start_t2;
+        printf("thread %d scoreTrajectory time: %lf\n", range->thread_index, t_diff2);
+        */
+        //printf("Traj %d cost: %f\n", i, loop_traj_cost);
+        //if (range->all_explored != NULL) {
+        //  loop_traj.cost_ = loop_traj_cost;
+        //  range->all_explored->push_back(loop_traj);
+        //}
+
+        if (loop_traj_cost >= 0) {
+          if (range->best_cost < 0 || loop_traj_cost < range->best_cost) {
+            range->best_cost = loop_traj_cost;
+            range->best_traj = loop_traj;
+          }
+        }
+        all_count++;
+      }
+    } else {
+      for (i = 0; i < range->case_num; i++) {
+        gen_success = range->gen_->nextTrajectory(loop_traj, range->case_index[i]);
+        if (gen_success == false) {
+          count++;
+          // TODO use this for debugging
+          continue;
+        }
+
+        loop_traj_cost = range->this_planner->scoreTrajectory(loop_traj, range->best_cost);
+        //printf("Traj %d cost: %f\n", i, loop_traj_cost);
+        //if (range->all_explored != NULL) {
+        //  loop_traj.cost_ = loop_traj_cost;
+        //  range->all_explored->push_back(loop_traj);
+        //}
+
+        if (loop_traj_cost >= 0) {
+          if (range->best_cost < 0 || loop_traj_cost < range->best_cost) {
+            range->best_cost = loop_traj_cost;
+            range->best_traj = loop_traj;
+          }
+        }
+        all_count++;
       }
     }
-
     /* For timing uncomment
     gettimeofday(&end, NULL);
     start_t = start.tv_sec + double(start.tv_usec) / 1e6;
     end_t = end.tv_sec + double(end.tv_usec) / 1e6;
     t_diff = end_t - start_t;
 
-    printf("thread %d time: %lf\n", range->thread_index, t_diff);
+    printf("thread %d fail case %d succ %d time: %lf\n", range->thread_index, count, all_count, t_diff);
     */
 
     pthread_exit(range);
@@ -138,6 +198,8 @@ namespace base_local_planner {
     //ret = new ThreadsArg;
 
     /* For timing uncomment
+    struct timeval start, end;
+    double start_t, end_t, t_diff;
     static int count1 = 0;
     static double acc_time = 0;
     */
@@ -158,8 +220,6 @@ namespace base_local_planner {
       //ROS_DEBUG("Evaluated %d trajectories", traj_size);
 
       /* For timing uncomment
-      struct timeval start, end;
-      double start_t, end_t, t_diff;
       gettimeofday(&start, NULL);
       */
 
@@ -167,16 +227,11 @@ namespace base_local_planner {
       int rem_temp = traj_size % threads_num_;
       for (i = 0; i < threads_num_; i++) {
  
-        range[i].thread_index = i;
-
         // record cases number per threads
         if (i < rem_temp)
           range[i].case_num = traj_size / threads_num_ + 1;
         else
           range[i].case_num = traj_size / threads_num_;
-
-        for (int j = 0; j < range[i].case_num; j++)
-          range[i].case_index[j] = j * threads_num_ + i;
 
         range[i].best_cost = -1;
         range[i].gen_ = gen_->clone();//TODO
@@ -193,17 +248,6 @@ namespace base_local_planner {
 
       printf("spilt time: %lf\n", t_diff);
       */
-
-      // for (i = 0; i < threads_num_; i++) {
-      //   printf("-----------thread %d-----------\n", i);
-      //   printf("case_num = %d\n", range[i].case_num);
-      //   for (int j = 0; j < range[i].case_num; j++) {
-      //     printf("%d ", range[i].case_index[j]);
-      //     if (j % 10 == 0)
-      //       printf("\n");
-      //   }
-      //   printf("\n");
-      // }
 
       // threads create
       for (i = 0; i < threads_num_; i++) {

@@ -60,6 +60,11 @@ public:
   virtual bool nextTrajectory(Trajectory &traj, int index) = 0;
 
   /**
+   * Whether this generator can create more trajectories with thread id
+   */
+  virtual bool nextTrajectory(Trajectory &traj, int index, int tid) = 0;
+
+  /**
    * Get total trajectories size
    */
   virtual int getTrajectorySize() = 0;

@@ -156,6 +156,11 @@ public:
   bool nextTrajectory(Trajectory &traj, int index);
 
   /**
+   * Whether this generator can create more trajectories with thread id
+   */
+  bool nextTrajectory(Trajectory &traj, int index, int tid);
+
+  /**
    * Get total trajectories size
    */
   int getTrajectorySize();
@@ -171,6 +176,12 @@ public:
         Eigen::Vector3f vel,
         Eigen::Vector3f sample_target_vel,
         base_local_planner::Trajectory& traj);
+
+  bool generateTrajectory(
+        Eigen::Vector3f pos,
+        Eigen::Vector3f vel,
+        Eigen::Vector3f sample_target_vel,
+        base_local_planner::Trajectory& traj, int tid);
 
 protected:
 

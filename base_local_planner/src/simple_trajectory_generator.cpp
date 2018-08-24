@@ -181,6 +181,24 @@ bool SimpleTrajectoryGenerator::nextTrajectory(Trajectory &comp_traj, int index)
 }
 
 /**
+ * Create and return the next sample trajectory with thread id
+ */
+bool SimpleTrajectoryGenerator::nextTrajectory(Trajectory &comp_traj, int index, int tid) {
+  bool result = false;
+  if (hasMoreTrajectories()) {
+    if (generateTrajectory(
+        pos_,
+        vel_,
+        sample_params_[index],
+        comp_traj, tid)) {
+      result = true;
+    }
+  }
+  //next_sample_index_++;
+  return result;
+}
+
+/**
  * @param pos current position of robot
  * @param vel desired velocity for sampling
  */
@@ -253,6 +271,105 @@ bool SimpleTrajectoryGenerator::generateTrajectory(
     pos = computeNewPositions(pos, loop_vel, dt);
 
   } // end for simulation steps
+
+  return num_steps > 0; // true if trajectory has at least one point
+}
+
+/**
+ * @param pos current position of robot
+ * @param vel desired velocity for sampling
+ * @param tid thread id
+ */
+bool SimpleTrajectoryGenerator::generateTrajectory(
+      Eigen::Vector3f pos,
+      Eigen::Vector3f vel,
+      Eigen::Vector3f sample_target_vel,
+      base_local_planner::Trajectory& traj, int tid) {
+  double vmag = hypot(sample_target_vel[0], sample_target_vel[1]);
+  double eps = 1e-4;
+  traj.cost_   = -1.0; // placed here in case we return early
+  //trajectory might be reused so we'll make sure to reset it
+  traj.resetPoints();
+
+  // make sure that the robot would at least be moving with one of
+  // the required minimum velocities for translation and rotation (if set)
+  if ((limits_->min_trans_vel >= 0 && vmag + eps < limits_->min_trans_vel) &&
+      (limits_->min_rot_vel >= 0 && fabs(sample_target_vel[2]) + eps < limits_->min_rot_vel)) {
+    return false;
+  }
+  // make sure we do not exceed max diagonal (x+y) translational velocity (if set)
+  if (limits_->max_trans_vel >=0 && vmag - eps > limits_->max_trans_vel) {
+    return false;
+  }
+
+  int num_steps;
+  if (discretize_by_time_) {
+    num_steps = ceil(sim_time_ / sim_granularity_);
+  } else {
+    //compute the number of steps we must take along this trajectory to be "safe"
+    double sim_time_distance = vmag * sim_time_; // the distance the robot would travel in sim_time if it did not change velocity
+    double sim_time_angle = fabs(sample_target_vel[2]) * sim_time_; // the angle the robot would rotate in sim_time
+    num_steps =
+        ceil(std::max(sim_time_distance / sim_granularity_,
+            sim_time_angle    / angular_sim_granularity_));
+  }
+
+  //compute a timestep
+  double dt = sim_time_ / num_steps;
+  traj.time_delta_ = dt;
+
+  Eigen::Vector3f loop_vel;
+  if (continued_acceleration_) {
+    // assuming the velocity of the first cycle is the one we want to store in the trajectory object
+    loop_vel = computeNewVelocities(sample_target_vel, vel, limits_->getAccLimits(), dt);
+    traj.xv_     = loop_vel[0];
+    traj.yv_     = loop_vel[1];
+    traj.thetav_ = loop_vel[2];
+  } else {
+    // assuming sample_vel is our target velocity within acc limits for one timestep
+    loop_vel = sample_target_vel;
+    traj.xv_     = sample_target_vel[0];
+    traj.yv_     = sample_target_vel[1];
+    traj.thetav_ = sample_target_vel[2];
+  }
+
+  /* For timing uncomment
+  struct timeval start, end;
+  double start_t, end_t, t_diff;
+  */
+
+  /* For timing uncomment - Moniter thread 0
+  if (tid == 0) {
+    printf("---num_steps: %d ", num_steps);
+    gettimeofday(&start, NULL);
+  }
+  */
+  //simulate the trajectory and check for collisions, updating costs along the way
+  for (int i = 0; i < num_steps; ++i) {
+
+    //add the point to the trajectory so we can draw it later if we want
+    traj.addPoint(pos[0], pos[1], pos[2]);
+
+    if (continued_acceleration_) {
+      //calculate velocities
+      loop_vel = computeNewVelocities(sample_target_vel, loop_vel, limits_->getAccLimits(), dt);
+      //ROS_WARN_NAMED("Generator", "Flag: %d, Loop_Vel %f, %f, %f", continued_acceleration_, loop_vel[0], loop_vel[1], loop_vel[2]);
+    }
+
+    //update the position of the robot using the velocities passed in
+    pos = computeNewPositions(pos, loop_vel, dt);
+
+  } // end for simulation steps
+
+  /* For timing uncomment - Moniter thread 0 
+  if (tid == 0) {
+    gettimeofday(&end, NULL);
+    start_t = start.tv_sec + double(start.tv_usec) / 1e6;
+    end_t = end.tv_sec + double(end.tv_usec) / 1e6;
+    t_diff = end_t - start_t;
+    printf("inside generateTrajectory time: %lf\n", t_diff);
+  }
+  */
 
   return num_steps > 0; // true if trajectory has at least one point
 }
