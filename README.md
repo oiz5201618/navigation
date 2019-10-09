@@ -50,6 +50,15 @@ cd ..
 catkin_make
 ```
 
+#### Download [map file](https://drive.google.com/open?id=10fBV_JrsOpleqxqA4FI8h0AKa7CUeOw-) and configure it
+```shell=
+vi sim_map.yaml
+```
+* change this path to your home directory
+```
+image: $HOME/sim_map.pgm
+```
+
 ## Usage (with Turtlebot3 simulation)
 
 * Setup `~/.bashrc`
@@ -59,14 +68,6 @@ export TURTLEBOT3_MODEL=burger
 * Launch simulation world
 ```shell=
 roslaunch turtlebot3_gazebo turtlebot3_world.launch
-```
-* [Download map file](https://drive.google.com/open?id=10fBV_JrsOpleqxqA4FI8h0AKa7CUeOw-) and configure it
-```shell=
-vi sim_map.yaml
-```
-* change this path to your home directory
-```
-image: $HOME/sim_map.pgm
 ```
 * Launch navigation stack 
 ```shell=
