@@ -38,6 +38,7 @@ sudo apt-get -y install libbullet-dev libsdl-dev libsdl-image1.2-dev ros-kinetic
 ```shell=
 cd ~/navigation_ws/src
 git clone https://github.com/oiz5201618/navigation
+cd ..
 catkin_make
 ```
 
@@ -45,6 +46,7 @@ catkin_make
 ```shell=
 cd ~/navigation_ws/src
 git clone https://github.com/oiz5201618/ros_navigation_orig
+cd ..
 catkin_make
 ```
 
@@ -58,7 +60,15 @@ export TURTLEBOT3_MODEL=burger
 ```shell=
 roslaunch turtlebot3_gazebo turtlebot3_world.launch
 ```
-* Launch navigation stack ([Download map file](https://drive.google.com/open?id=10fBV_JrsOpleqxqA4FI8h0AKa7CUeOw-))
+* [Download map file](https://drive.google.com/open?id=10fBV_JrsOpleqxqA4FI8h0AKa7CUeOw-) and configure it
+```shell=
+vi sim_map.yaml
+```
+* change this path to your home directory
+```
+image: $HOME/sim_map.pgm
+```
+* Launch navigation stack 
 ```shell=
 roslaunch turtlebot3_navigation turtlebot3_navigation.launch map_file:=$HOME/sim_map.yaml
 ```
